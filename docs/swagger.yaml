@@ -1,0 +1,149 @@
+definitions:
+  controllers.WalletReturn:
+    properties:
+      txId:
+        type: string
+    type: object
+  models.Wallet:
+    properties:
+      address:
+        type: string
+      created_at:
+        type: string
+      hash_algo:
+        type: integer
+      hash_algo_string:
+        type: string
+      id:
+        type: integer
+      public_key:
+        type: string
+      sign_algo:
+        type: integer
+      sign_algo_string:
+        type: string
+      updated_at:
+        type: string
+      weight:
+        type: integer
+    type: object
+info:
+  contact: {}
+paths:
+  /v1/address:
+    get:
+      consumes:
+      - application/json
+      description: Submit public key to receive accounts
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: return 200 with the array of accounts.
+          schema:
+            items:
+              items:
+                $ref: '#/definitions/models.Wallet'
+              type: array
+            type: array
+      summary: Get accounts
+      tags:
+      - user
+    post:
+      consumes:
+      - application/json
+      description: create address use public key
+      parameters:
+      - description: public key
+        in: body
+        name: publicKey
+        required: true
+        schema:
+          type: string
+      - description: sign algorithm
+        in: body
+        name: signatureAlgorithm
+        required: true
+        schema:
+          type: string
+      - description: hash algorithm
+        in: body
+        name: hashAlgorithm
+        required: true
+        schema:
+          type: string
+      - description: weight of the key
+        in: body
+        name: weight
+        required: true
+        schema:
+          type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: return 200 with the transaction id.
+          schema:
+            $ref: '#/definitions/controllers.WalletReturn'
+      summary: Create an address
+      tags:
+      - user
+  /v1/address/testnet:
+    get:
+      consumes:
+      - application/json
+      description: Submit public key to receive accounts
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: return 200 with the array of accounts from testnet.
+          schema:
+            items:
+              items:
+                $ref: '#/definitions/models.Wallet'
+              type: array
+            type: array
+      summary: Get accounts
+      tags:
+      - user
+    post:
+      consumes:
+      - application/json
+      description: use public key to create address
+      parameters:
+      - description: public key
+        in: body
+        name: publicKey
+        required: true
+        schema:
+          type: string
+      - description: sign algorithm
+        in: body
+        name: signatureAlgorithm
+        required: true
+        schema:
+          type: string
+      - description: hash algorithm
+        in: body
+        name: hashAlgorithm
+        required: true
+        schema:
+          type: string
+      - description: weight of the key
+        in: body
+        name: weight
+        required: true
+        schema:
+          type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: return 200 with the transaction id.
+          schema:
+            $ref: '#/definitions/controllers.WalletReturn'
+      summary: Create an address
+      tags:
+      - user
+swagger: "2.0"
