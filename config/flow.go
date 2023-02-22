@@ -2,11 +2,14 @@ package config
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/onflow/cadence"
+	c_json "github.com/onflow/cadence/encoding/json"
 	"github.com/onflow/flow-go-sdk"
 	"github.com/onflow/flow-go-sdk/client"
 	"github.com/onflow/flow-go-sdk/crypto"
@@ -32,7 +35,7 @@ func CreateFlowKey(hashAlgo string, signAlgo string, publicKey string, weight in
 
 	gasLimit := uint64(100)
 
-	tx := CreateAccount(node, publicKey, signAlgo, hashAlgo, serviceAddressHex, servicePrivKeyHex, serviceSigAlgoHex, gasLimit, keyIndex, weight)
+	tx := CreateAccount(node, publicKey, signAlgo, hashAlgo, serviceAddressHex, servicePrivKeyHex, serviceSigAlgoHex, gasLimit, keyIndex, weight, network)
 
 	return tx
 }
@@ -46,7 +49,8 @@ func CreateAccount(node string,
 	serviceSigAlgoName string,
 	gasLimit uint64,
 	keyIndex int64,
-	weight int) *flow.Transaction {
+	weight int,
+	network string) *flow.Transaction {
 
 	ctx := context.Background()
 
@@ -93,6 +97,30 @@ func CreateAccount(node string,
 	}
 
 	tx, err := templates.CreateAccount([]*flow.AccountKey{accountKey}, nil, serviceAddress)
+	var transactionScript string
+	if network == "testnet" {
+
+		transactionScript = "import Crypto\n import FlowToken from 0x7e60df042a9c0868\n import FungibleToken from 0x9a0766d93b6608b7\n  transaction(publicKeys: [Crypto.KeyListEntry], contracts: {String: String}, fundAmount: UFix64) {\n let tokenReceiver: &{FungibleToken.Receiver}\n let sentVault: @FungibleToken.Vault\n prepare(signer: AuthAccount) {\n let account = AuthAccount(payer: signer)\n // add all the keys to the account\n for key in publicKeys {\n account.keys.add(publicKey: key.publicKey, hashAlgorithm: key.hashAlgorithm, weight: key.weight)\n }\n // add contracts if provided\n for contract in contracts.keys {\n account.contracts.add(name: contract, code: contracts[contract]!.decodeHex())\n }\n self.tokenReceiver = account.getCapability(/public/flowTokenReceiver)!.borrow<&{FungibleToken.Receiver}>() ?? panic(\"Unable to borrow receiver reference\")\n let vaultRef = signer.borrow<&FlowToken.Vault>(from: /storage/flowTokenVault) ?? panic(\"Could not borrow reference to the owner''s Vault!\")\n self.sentVault <- vaultRef.withdraw(amount: fundAmount)\n }\n execute {\n  self.tokenReceiver.deposit(from: <-self.sentVault)\n }\n }\n "
+	} else {
+		transactionScript = "import Crypto\n import FlowToken from 0x1654653399040a61\n import FungibleToken from 0xf233dcee88fe0abe\n transaction(publicKeys: [Crypto.KeyListEntry], contracts: {String: String}, fundAmount: UFix64) {\n let tokenReceiver: &{FungibleToken.Receiver}\n let sentVault: @FungibleToken.Vault\n prepare(signer: AuthAccount) {\n let account = AuthAccount(payer: signer)\n // add all the keys to the account\n for key in publicKeys {\n account.keys.add(publicKey: key.publicKey, hashAlgorithm: key.hashAlgorithm, weight: key.weight)\n }\n // add contracts if provided\n for contract in contracts.keys {\n account.contracts.add(name: contract, code: contracts[contract]!.decodeHex())\n }\n self.tokenReceiver = account.getCapability(/public/flowTokenReceiver)!.borrow<&{FungibleToken.Receiver}>() ?? panic(\"Unable to borrow receiver reference\")\n let vaultRef = signer.borrow<&FlowToken.Vault>(from: /storage/flowTokenVault) ?? panic(\"Could not borrow reference to the owner''s Vault!\")\n self.sentVault <- vaultRef.withdraw(amount: fundAmount)\n }\n execute {\n  self.tokenReceiver.deposit(from: <-self.sentVault)\n }\n }\n "
+	}
+
+	s := map[string]interface{}{}
+	s["type"] = "UFix64"
+	s["value"] = "0.00100000"
+
+	cv, err := ArgAsCadence(s)
+	if err != nil {
+		log.Println(err)
+	}
+
+	err = tx.AddArgument(cv)
+	if err != nil {
+		log.Println(err)
+	}
+
+	tx.SetScript([]byte(transactionScript))
+
 	if err != nil {
 		log.Println("Create Account Error: ", err)
 	}
@@ -179,4 +207,23 @@ func DecodePublicKey(publicKey string) (crypto.PublicKey, error) {
 
 func SendTransaction() {
 	flow.NewTransaction()
+}
+
+func ArgAsCadence(a interface{}) (cadence.Value, error) {
+	c, ok := a.(cadence.Value)
+	if ok {
+		return c, nil
+	}
+	// Convert to json bytes so we can use cadence's own encoding library
+	j, err := json.Marshal(a)
+	if err != nil {
+		return cadence.Void{}, err
+	}
+	// Use cadence's own encoding library
+	c, err = c_json.Decode(j)
+
+	if err != nil {
+		return cadence.Void{}, err
+	}
+	return c, nil
 }
