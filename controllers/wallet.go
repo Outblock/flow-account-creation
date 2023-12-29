@@ -13,7 +13,7 @@ import (
 	models "outblock.io/go-server/demo/models"
 )
 
-//WalletController ...
+// WalletController ...
 type WalletController struct{}
 
 var walletModel = new(models.WalletModel)
@@ -123,6 +123,7 @@ func (ctrl WalletController) CreateAddress(c *gin.Context) {
 	}
 	var accountForm forms.AccountForm
 	if validationErr := c.ShouldBindJSON(&accountForm); validationErr != nil {
+		log.Printf("Error while receiving a wallet, Reason: %v\n", validationErr)
 		c.AbortWithStatusJSON(http.StatusNotAcceptable, gin.H{"message": "validation error"})
 		return
 	}
@@ -154,7 +155,7 @@ func (ctrl WalletController) CreateAddress(c *gin.Context) {
 	return
 }
 
-//Create flow account
+// Create flow account
 func createAccountMain(wallet *models.WalletMain, c *gin.Context) flow.Identifier {
 
 	txMain := config.CreateFlowKey(wallet.HashAlgoString, wallet.SignAlgoString, wallet.PublicKey, wallet.Weight, "mainnet", c)
@@ -165,7 +166,7 @@ func createAccountMain(wallet *models.WalletMain, c *gin.Context) flow.Identifie
 	return txidMain
 }
 
-//Receive and save flow account mainnet
+// Receive and save flow account mainnet
 func generateWalletMain(id flow.Identifier, wallet *models.WalletMain) error {
 	result := config.WaitForSeal(id, "mainnet")
 
@@ -178,7 +179,7 @@ func generateWalletMain(id flow.Identifier, wallet *models.WalletMain) error {
 	return nil
 }
 
-//Save the flow account to database
+// Save the flow account to database
 func saveWalletMain(wallet *models.WalletMain, result string) error {
 
 	savedAddress := "0x" + result
@@ -231,6 +232,7 @@ func (ctrl WalletController) CreateAddressTest(c *gin.Context) {
 	var accountForm forms.AccountForm
 
 	if validationErr := c.ShouldBindJSON(&accountForm); validationErr != nil {
+		log.Printf("Error while receiving a wallet, Reason: %v\n", validationErr)
 		c.AbortWithStatusJSON(http.StatusNotAcceptable, gin.H{"message": "validation error"})
 		return
 	}
@@ -271,7 +273,7 @@ func createAccountTest(wallet *models.Wallet, c *gin.Context) flow.Identifier {
 	return txid
 }
 
-//Receive and save flow account
+// Receive and save flow account
 func generateWalletTest(id flow.Identifier, wallet *models.Wallet) error {
 	result := config.WaitForSeal(id, "testnet")
 
@@ -284,7 +286,7 @@ func generateWalletTest(id flow.Identifier, wallet *models.Wallet) error {
 	return nil
 }
 
-//Save the flow account to database
+// Save the flow account to database
 func saveWalletTest(wallet *models.Wallet, result string) error {
 
 	savedAddress := "0x" + result
