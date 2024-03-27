@@ -363,7 +363,7 @@ func (ctrl WalletController) CreateAnyAddress(c *gin.Context) {
 
 	switch networkString {
 	case "previewnet":
-		result, err = accountHelper.CreatePreviewAccount(c, request.Network, request.AccountKey)
+		result, err = accountHelper.CreatePreviewAccount(c, networkString, request.AccountKey)
 	default:
 		// Handle the default case
 		log.Printf("Unsupported network: %v\n", request.Network)
