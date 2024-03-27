@@ -42,23 +42,38 @@ func (c Contract) SourceHex() string {
 }
 
 var previewAccountCreate = []byte(`
- import Crypto
- 
- transaction(publicKeys: [Crypto.KeyListEntry], contracts: {String: String}) {
-		 prepare(signer: auth(BorrowValue | Storage) &Account) {
- 
-				 let account = Account(payer: signer)
- 
-				 // add all the keys to the account
-				 for key in publicKeys {
-						 account.keys.add(publicKey: key.publicKey, hashAlgorithm: key.hashAlgorithm, weight: key.weight)
-				 }
- 
-				 // add contracts if provided
-				 for contract in contracts.keys {
-						 account.contracts.add(name: contract, code: contracts[contract]!.decodeHex())
-				 }
-		 }
+mport Crypto
+import FlowToken from 0x4445e7ad11568276
+import FungibleToken from 0xa0225e7000ac82a9
+
+ transaction(publicKeys: [Crypto.KeyListEntry], contracts: {String: String}, fundAmount: UFix64) {
+    let sentVault: @{FungibleToken.Vault}
+    let signer: auth(BorrowValue | Storage) &Account
+
+    prepare(signer: auth(BorrowValue, Storage) &Account) {
+
+        let vaultRef = signer.storage.borrow<auth(FungibleToken.Withdraw) &FlowToken.Vault>(from: /storage/flowTokenVault) ?? panic("Could not borrow reference to the owner''s Vault!")
+        self.sentVault <- vaultRef.withdraw(amount: fundAmount)
+
+        self.signer = signer
+    }
+    execute {
+        let account = Account(payer: self.signer)
+        for key in publicKeys {
+            account.keys.add(publicKey: key.publicKey, hashAlgorithm: key.hashAlgorithm, weight: key.weight)
+        }
+        // account.keys.add(publicKey: PublicKey(
+        //     publicKey: publicKey.decodeHex(),
+        //     signatureAlgorithm: SignatureAlgorithm(rawValue: 1)!), 
+        //     hashAlgorithm: HashAlgorithm(rawValue: 1)!, weight: 1000.0)
+
+        for contract in contracts.keys {
+            account.contracts.add(name: contract, code: contracts[contract]!.decodeHex())
+        }
+        let tokenReceiver = account.capabilities.borrow<&{FungibleToken.Receiver}>(/public/flowTokenReceiver) ?? panic("Unable to borrow receiver reference")
+
+        tokenReceiver.deposit(from: <-self.sentVault)
+    }
  }
 	`)
 

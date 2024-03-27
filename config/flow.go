@@ -108,7 +108,39 @@ func CreateAccount(node string,
 	if network == "testnet" {
 		transactionScript = "import Crypto\n import FlowToken from 0x7e60df042a9c0868\n import FungibleToken from 0x9a0766d93b6608b7\n transaction(publicKeys: [Crypto.KeyListEntry], contracts: {String: String}, fundAmount: UFix64) {\n let tokenReceiver: &{FungibleToken.Receiver}\n let sentVault: @FungibleToken.Vault\n prepare(signer: AuthAccount) {\n let account = AuthAccount(payer: signer)\n for key in publicKeys {\n account.keys.add(publicKey: key.publicKey, hashAlgorithm: key.hashAlgorithm, weight: key.weight)\n }\n for contract in contracts.keys {\n account.contracts.add(name: contract, code: contracts[contract]!.decodeHex())\n }\n self.tokenReceiver = account.getCapability(/public/flowTokenReceiver)!.borrow<&{FungibleToken.Receiver}>() ?? panic(\"Unable to borrow receiver reference\")\n let vaultRef = signer.borrow<&FlowToken.Vault>(from: /storage/flowTokenVault) ?? panic(\"Could not borrow reference to the owner''s Vault!\")\n self.sentVault <- vaultRef.withdraw(amount: fundAmount)\n }\n execute {\n self.tokenReceiver.deposit(from: <-self.sentVault)\n }\n }\n "
 	} else if network == "previewnet" {
-		transactionScript = "import Crypto\n transaction(publicKeys: [Crypto.KeyListEntry], contracts: {String: String}) {\n prepare(signer: auth(BorrowValue | Storage) &Account) {\n let account = Account(payer: signer)\n for key in publicKeys {\n account.keys.add(publicKey: key.publicKey, hashAlgorithm: key.hashAlgorithm, weight: key.weight)\n }\n for contract in contracts.keys {\n account.contracts.add(name: contract, code: contracts[contract]!.decodeHex())\n }\n }\n }"
+		transactionScript = `import Crypto
+		import FlowToken from 0x4445e7ad11568276
+		import FungibleToken from 0xa0225e7000ac82a9
+		
+		 transaction(publicKeys: [Crypto.KeyListEntry], contracts: {String: String}, fundAmount: UFix64) {
+				let sentVault: @{FungibleToken.Vault}
+				let signer: auth(BorrowValue | Storage) &Account
+		
+				prepare(signer: auth(BorrowValue, Storage) &Account) {
+		
+						let vaultRef = signer.storage.borrow<auth(FungibleToken.Withdraw) &FlowToken.Vault>(from: /storage/flowTokenVault) ?? panic("Could not borrow reference to the owner''s Vault!")
+						self.sentVault <- vaultRef.withdraw(amount: fundAmount)
+		
+						self.signer = signer
+				}
+				execute {
+						let account = Account(payer: self.signer)
+						for key in publicKeys {
+								account.keys.add(publicKey: key.publicKey, hashAlgorithm: key.hashAlgorithm, weight: key.weight)
+						}
+						// account.keys.add(publicKey: PublicKey(
+						//     publicKey: publicKey.decodeHex(),
+						//     signatureAlgorithm: SignatureAlgorithm(rawValue: 1)!), 
+						//     hashAlgorithm: HashAlgorithm(rawValue: 1)!, weight: 1000.0)
+		
+						for contract in contracts.keys {
+								account.contracts.add(name: contract, code: contracts[contract]!.decodeHex())
+						}
+						let tokenReceiver = account.capabilities.borrow<&{FungibleToken.Receiver}>(/public/flowTokenReceiver) ?? panic("Unable to borrow receiver reference")
+		
+						tokenReceiver.deposit(from: <-self.sentVault)
+				}
+		 }`
 	} else {
 		transactionScript = "import Crypto\n import FlowToken from 0x1654653399040a61\n import FungibleToken from 0xf233dcee88fe0abe\n transaction(publicKeys: [Crypto.KeyListEntry], contracts: {String: String}, fundAmount: UFix64) {\n let tokenReceiver: &{FungibleToken.Receiver}\n let sentVault: @FungibleToken.Vault\n prepare(signer: AuthAccount) {\n let account = AuthAccount(payer: signer)\n for key in publicKeys {\n account.keys.add(publicKey: key.publicKey, hashAlgorithm: key.hashAlgorithm, weight: key.weight)\n }\n for contract in contracts.keys {\n account.contracts.add(name: contract, code: contracts[contract]!.decodeHex())\n }\n self.tokenReceiver = account.getCapability(/public/flowTokenReceiver)!.borrow<&{FungibleToken.Receiver}>() ?? panic(\"Unable to borrow receiver reference\")\n let vaultRef = signer.borrow<&FlowToken.Vault>(from: /storage/flowTokenVault) ?? panic(\"Could not borrow reference to the owner''s Vault!\")\n self.sentVault <- vaultRef.withdraw(amount: fundAmount)\n }\n execute {\n self.tokenReceiver.deposit(from: <-self.sentVault)\n }\n }\n "
 	}
@@ -117,16 +149,14 @@ func CreateAccount(node string,
 	s["type"] = "UFix64"
 	s["value"] = "0.00100000"
 
-	if network != "previewnet" {
-		cv, err := ArgAsCadence(s)
-		if err != nil {
-			log.Println(err)
-		}
+	cv, err := ArgAsCadence(s)
+	if err != nil {
+		log.Println(err)
+	}
 
-		err = tx.AddArgument(cv)
-		if err != nil {
-			log.Println(err)
-		}
+	err = tx.AddArgument(cv)
+	if err != nil {
+		log.Println(err)
 	}
 
 	tx.SetScript([]byte(transactionScript))
