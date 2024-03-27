@@ -344,7 +344,6 @@ func (ctrl WalletController) CreateAnyAddress(c *gin.Context) {
 		}
 		ipLogModel.Update(ipLog)
 	}
-	userId := c.MustGet("UUID").(string)
 
 	var request CreateAddressRequest
 
@@ -364,7 +363,7 @@ func (ctrl WalletController) CreateAnyAddress(c *gin.Context) {
 
 	switch networkString {
 	case "previewnet":
-		result, err = accountHelper.CreatePreviewAccount(c, userId, request.Network, request.AccountKey)
+		result, err = accountHelper.CreatePreviewAccount(c, request.Network, request.AccountKey)
 	default:
 		// Handle the default case
 		log.Printf("Unsupported network: %v\n", request.Network)

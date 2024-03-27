@@ -1,7 +1,6 @@
 package helper
 
 import (
-	"fmt"
 	"log"
 
 	"github.com/gin-gonic/gin"
@@ -20,13 +19,7 @@ type CreateAddressRequest struct {
 	AccountKey forms.AccountForm `json:"account_key"`
 }
 
-func (ctrl AccountHelper) CreatePreviewAccount(c *gin.Context, userId string, Network string, AccountKey forms.AccountForm) (string, error) {
-	previewnetWallet, _ := walletModelPreview.SelectManyCustom("user_id", userId)
-
-	if len(*previewnetWallet) != 0 {
-		log.Printf("Previewnet wallet already exist, Reason: %v\n", previewnetWallet)
-		return "", fmt.Errorf("previewnet wallet already exists")
-	}
+func (ctrl AccountHelper) CreatePreviewAccount(c *gin.Context, Network string, AccountKey forms.AccountForm) (string, error) {
 
 	walletId, createErr := walletModelPreview.CreateWallet(AccountKey)
 	if createErr != nil {
@@ -40,12 +33,12 @@ func (ctrl AccountHelper) CreatePreviewAccount(c *gin.Context, userId string, Ne
 		return "", selectWalletErr
 	}
 
-	result := createPreviewAccount(userId, wallet, c)
+	result := createPreviewAccount(wallet, c)
 	return result, nil
 }
 
 // Create flow account
-func createPreviewAccount(userId string, wallet *models.WalletPreview, c *gin.Context) string {
+func createPreviewAccount(wallet *models.WalletPreview, c *gin.Context) string {
 
 	tx := config.CreateFlowKey(wallet.HashAlgoString, wallet.SignAlgoString, wallet.PublicKey, wallet.Weight, "previewnet", c)
 	txid := tx.ID()
