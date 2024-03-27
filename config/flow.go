@@ -117,14 +117,16 @@ func CreateAccount(node string,
 	s["type"] = "UFix64"
 	s["value"] = "0.00100000"
 
-	cv, err := ArgAsCadence(s)
-	if err != nil {
-		log.Println(err)
-	}
+	if network != "previewnet" {
+		cv, err := ArgAsCadence(s)
+		if err != nil {
+			log.Println(err)
+		}
 
-	err = tx.AddArgument(cv)
-	if err != nil {
-		log.Println(err)
+		err = tx.AddArgument(cv)
+		if err != nil {
+			log.Println(err)
+		}
 	}
 
 	tx.SetScript([]byte(transactionScript))
