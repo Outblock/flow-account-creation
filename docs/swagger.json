@@ -92,6 +92,75 @@
                 }
             }
         },
+        "/v1/address/network": {
+            "post": {
+                "description": "add by uid",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "user"
+                ],
+                "summary": "Add an address",
+                "parameters": [
+                    {
+                        "description": "account key object",
+                        "name": "account_key",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/forms.AccountForm"
+                        }
+                    },
+                    {
+                        "description": "the network of the address you want to create",
+                        "name": "network",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "return 200 while address creation processing in backend."
+                    }
+                }
+            }
+        },
+        "/v1/address/previewnet": {
+            "get": {
+                "description": "Submit public key to receive accounts",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "user"
+                ],
+                "summary": "Get accounts",
+                "responses": {
+                    "200": {
+                        "description": "return 200 with the array of accounts from previewnet.",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/definitions/models.Wallet"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/v1/address/testnet": {
             "get": {
                 "description": "Submit public key to receive accounts",
@@ -187,6 +256,29 @@
             "properties": {
                 "txId": {
                     "type": "string"
+                }
+            }
+        },
+        "forms.AccountForm": {
+            "type": "object",
+            "required": [
+                "hashAlgorithm",
+                "publicKey",
+                "signatureAlgorithm",
+                "weight"
+            ],
+            "properties": {
+                "hashAlgorithm": {
+                    "type": "string"
+                },
+                "publicKey": {
+                    "type": "string"
+                },
+                "signatureAlgorithm": {
+                    "type": "string"
+                },
+                "weight": {
+                    "type": "integer"
                 }
             }
         },

@@ -16,6 +16,10 @@ func Flow(network string) string {
 		return "access.devnet.nodes.onflow.org:9000"
 	case "mainnet":
 		return "access.mainnet.nodes.onflow.org:9000"
+	case "crescendo":
+		return "access.crescendo.nodes.onflow.org:9000"
+	case "previewnet":
+		return "access.previewnet.nodes.onflow.org:9000"
 	default:
 		return "access.devnet.nodes.onflow.org:9000"
 	}
@@ -27,7 +31,8 @@ func FlowKey(network string) (string, string, int) {
 		return os.Getenv("TESTNET_ADDRESS"), os.Getenv("TESTNET_KEY"), 0
 	case "mainnet":
 		return os.Getenv("MAINNET_ADDRESS"), os.Getenv("MAINNET_KEY"), 0
-
+	case "previewnet":
+		return os.Getenv("PREVIEWNET_ADDRESS"), os.Getenv("PREVIEWNET_KEY"), 0
 	default:
 		return os.Getenv("TESTNET_ADDRESS"), os.Getenv("TESTNET_KEY"), 0
 	}

@@ -96,7 +96,14 @@ func CreateAccount(node string,
 
 	}
 
-	tx, err := templates.CreateAccount([]*flow.AccountKey{accountKey}, nil, serviceAddress)
+	var tx *flow.Transaction
+	if network == "previewnet" {
+		tx, err = CreatePreviewnetAccount([]*flow.AccountKey{accountKey}, nil, serviceAddress)
+	} else {
+		tx, err = templates.CreateAccount([]*flow.AccountKey{accountKey}, nil, serviceAddress)
+	}
+
+	// tx, err := templates.CreateAccount([]*flow.AccountKey{accountKey}, nil, serviceAddress)
 	var transactionScript string
 	if network == "testnet" {
 

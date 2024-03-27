@@ -21,6 +21,8 @@ func Routes(router *gin.Engine) {
 		privateV1.GET("/address", wallet.Getrecord)
 		privateV1.POST("/address/testnet", wallet.CreateAddressTest)
 		privateV1.GET("/address/testnet", wallet.GetrecordTest)
+		privateV1.POST("/address/network", wallet.CreateAnyAddress)
+		privateV1.GET("/address/network", wallet.GetRecordAddress)
 
 	}
 

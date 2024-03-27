@@ -4,6 +4,22 @@ definitions:
       txId:
         type: string
     type: object
+  forms.AccountForm:
+    properties:
+      hashAlgorithm:
+        type: string
+      publicKey:
+        type: string
+      signatureAlgorithm:
+        type: string
+      weight:
+        type: integer
+    required:
+    - hashAlgorithm
+    - publicKey
+    - signatureAlgorithm
+    - weight
+    type: object
   models.Wallet:
     properties:
       address:
@@ -86,6 +102,51 @@ paths:
           schema:
             $ref: '#/definitions/controllers.WalletReturn'
       summary: Create an address
+      tags:
+      - user
+  /v1/address/network:
+    post:
+      consumes:
+      - application/json
+      description: add by uid
+      parameters:
+      - description: account key object
+        in: body
+        name: account_key
+        required: true
+        schema:
+          $ref: '#/definitions/forms.AccountForm'
+      - description: the network of the address you want to create
+        in: body
+        name: network
+        required: true
+        schema:
+          type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: return 200 while address creation processing in backend.
+      summary: Add an address
+      tags:
+      - user
+  /v1/address/previewnet:
+    get:
+      consumes:
+      - application/json
+      description: Submit public key to receive accounts
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: return 200 with the array of accounts from previewnet.
+          schema:
+            items:
+              items:
+                $ref: '#/definitions/models.Wallet'
+              type: array
+            type: array
+      summary: Get accounts
       tags:
       - user
   /v1/address/testnet:

@@ -4,12 +4,14 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/onflow/flow-go-sdk"
 	"outblock.io/go-server/demo/config"
 	"outblock.io/go-server/demo/forms"
+	"outblock.io/go-server/demo/helper"
 	models "outblock.io/go-server/demo/models"
 )
 
@@ -18,10 +20,18 @@ type WalletController struct{}
 
 var walletModel = new(models.WalletModel)
 var walletModelMain = new(models.WalletModelMain)
+var walletModelPreview = new(models.WalletModelPreview)
 var ipLogModel = new(models.IpLogModel)
+
+var accountHelper = new(helper.AccountHelper)
 
 type WalletReturn struct {
 	TxId string `json:"txId"`
+}
+
+type CreateAddressRequest struct {
+	Network    string            `json:"network"`
+	AccountKey forms.AccountForm `json:"account_key"`
 }
 
 // Get accounts with public key godoc
@@ -299,4 +309,117 @@ func saveWalletTest(wallet *models.Wallet, result string) error {
 	}
 
 	return nil
+}
+
+// Create address godoc
+// @Summary      Add an address
+// @Description  add by uid
+// @Tags         user
+// @Accept       json
+// @Produce      json
+// @Param account_key body forms.AccountForm true "account key object"
+// @Param network body string true "the network of the address you want to create"
+// @Success      200   "return 200 while address creation processing in backend."
+// @Router       /v1/address/network [post]
+func (ctrl WalletController) CreateAnyAddress(c *gin.Context) {
+	// check registered ip
+	ip := c.ClientIP()
+	ipLog, ipLogErr := ipLogModel.SelectCustom("ip", ip)
+	if ipLogErr != nil && ipLog.ID == 0 {
+		ipLog, _ = ipLogModel.CreateIpLog(ip)
+	} else {
+		if ipLog.SavedTime.After(time.Now().AddDate(0, 0, -1)) && ipLog.Count > 50 {
+			fmt.Printf("The HTTP request failed with error %s\n")
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"status":  http.StatusInternalServerError,
+				"message": "Query failed",
+			})
+			return
+		} else if ipLog.SavedTime.Before(time.Now().AddDate(0, 0, -1)) {
+			ipLog.SavedTime = time.Now()
+			ipLog.Count = 1
+		} else {
+			count := ipLog.Count
+			ipLog.Count = count + 1
+		}
+		ipLogModel.Update(ipLog)
+	}
+	userId := c.MustGet("UUID").(string)
+
+	var request CreateAddressRequest
+
+	if err := c.BindJSON(&request); err != nil {
+		fmt.Printf("The HTTP request failed with error %s\n", err)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid request format",
+		})
+		return
+	}
+	// network := request.Network
+	// userId := "1c5b7188-799e-4ac1-b963-648ca534c428"
+	var result string
+	var err error
+
+	networkString := strings.ToLower(request.Network)
+
+	switch networkString {
+	case "previewnet":
+		result, err = accountHelper.CreatePreviewAccount(c, userId, request.Network, request.AccountKey)
+	default:
+		// Handle the default case
+		log.Printf("Unsupported network: %v\n", request.Network)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status":  http.StatusBadRequest,
+			"message": "Unsupported network",
+		})
+		return
+	}
+
+	if err != nil {
+		log.Printf("Error while creating a single wallet, Reason: %v\n", err)
+		c.JSON(http.StatusOK, gin.H{
+			"status":  http.StatusNotFound,
+			"message": "Wallet create fail",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":  http.StatusOK,
+		"message": "Transaction created",
+		"data":    result,
+	})
+
+	return
+}
+
+// Get accounts with public key testnet
+// @Summary      Get accounts
+// @Description  Submit public key to receive accounts
+// @Tags         user
+// @Accept       json
+// @Produce      json
+// @Success      200  {array} []models.Wallet "return 200 with the array of accounts from previewnet."
+// @Router       /v1/address/previewnet [get]
+func (ctrl WalletController) GetRecordAddress(c *gin.Context) {
+
+	publicKey := c.Query("publicKey")
+
+	wallet, walletErr := walletModelPreview.SelectManyCustom("public_key", publicKey)
+	if walletErr != nil {
+		log.Printf("Error while creating a wallet, Reason: %v\n", walletErr)
+		c.JSON(http.StatusOK, gin.H{
+			"status":  http.StatusInternalServerError,
+			"message": "Request error",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":  http.StatusOK,
+		"message": "Request success",
+		"data":    wallet,
+	})
+
+	return
 }
