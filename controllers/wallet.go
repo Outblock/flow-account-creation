@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -27,11 +26,6 @@ var accountHelper = new(helper.AccountHelper)
 
 type WalletReturn struct {
 	TxId string `json:"txId"`
-}
-
-type CreateAddressRequest struct {
-	Network    string            `json:"network"`
-	AccountKey forms.AccountForm `json:"account_key"`
 }
 
 // Get accounts with public key godoc
@@ -317,10 +311,12 @@ func saveWalletTest(wallet *models.Wallet, result string) error {
 // @Tags         user
 // @Accept       json
 // @Produce      json
-// @Param account_key body forms.AccountForm true "account key object"
-// @Param network body string true "the network of the address you want to create"
+// @Param        publicKey    body     string  true  "public key"
+// @Param        signatureAlgorithm    body     string  true  "sign algorithm"
+// @Param        hashAlgorithm    body     string  true  "hash algorithm"
+// @Param        weight    body     int  true  "weight of the key"
 // @Success      200   "return 200 while address creation processing in backend."
-// @Router       /v1/address/network [post]
+// @Router       /v1/address/previewnet [post]
 func (ctrl WalletController) CreateAnyAddress(c *gin.Context) {
 	// check registered ip
 	ip := c.ClientIP()
@@ -345,13 +341,10 @@ func (ctrl WalletController) CreateAnyAddress(c *gin.Context) {
 		ipLogModel.Update(ipLog)
 	}
 
-	var request CreateAddressRequest
-
-	if err := c.BindJSON(&request); err != nil {
-		fmt.Printf("The HTTP request failed with error %s\n", err)
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid request format",
-		})
+	var accountForm forms.AccountForm
+	if validationErr := c.ShouldBindJSON(&accountForm); validationErr != nil {
+		log.Printf("Error while receiving a wallet, Reason: %v\n", validationErr)
+		c.AbortWithStatusJSON(http.StatusNotAcceptable, gin.H{"message": "validation error"})
 		return
 	}
 	// network := request.Network
@@ -359,20 +352,7 @@ func (ctrl WalletController) CreateAnyAddress(c *gin.Context) {
 	var result string
 	var err error
 
-	networkString := strings.ToLower(request.Network)
-
-	switch networkString {
-	case "previewnet":
-		result, err = accountHelper.CreatePreviewAccount(c, networkString, request.AccountKey)
-	default:
-		// Handle the default case
-		log.Printf("Unsupported network: %v\n", request.Network)
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status":  http.StatusBadRequest,
-			"message": "Unsupported network",
-		})
-		return
-	}
+	result, err = accountHelper.CreatePreviewAccount(c, "previewnet", accountForm)
 
 	if err != nil {
 		log.Printf("Error while creating a single wallet, Reason: %v\n", err)
