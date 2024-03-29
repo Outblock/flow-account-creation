@@ -362,11 +362,13 @@ func (ctrl WalletController) CreateAnyAddress(c *gin.Context) {
 		})
 		return
 	}
+	var returnStruct WalletReturn
+	returnStruct.TxId = result
 
 	c.JSON(http.StatusOK, gin.H{
 		"status":  http.StatusOK,
 		"message": "Transaction created",
-		"data":    result,
+		"data":    returnStruct,
 	})
 
 	return
