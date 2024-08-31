@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/onflow/cadence"
 	c_json "github.com/onflow/cadence/encoding/json"
+	"github.com/onflow/cadence/runtime/common"
 	"github.com/onflow/flow-go-sdk"
 	"github.com/onflow/flow-go-sdk/client"
 	"github.com/onflow/flow-go-sdk/crypto"
@@ -99,8 +100,12 @@ func CreateAccount(node string,
 	var tx *flow.Transaction
 	if network == "previewnet" {
 		tx, err = CreatePreviewnetAccount([]*flow.AccountKey{accountKey}, nil, serviceAddress)
-	} else {
+	} else if network == "mainnet" {
 		tx, err = templates.CreateAccount([]*flow.AccountKey{accountKey}, nil, serviceAddress)
+	} else {
+		tx, err = CreateFlowTestnetAccount([]*flow.AccountKey{accountKey}, nil, serviceAddress)
+
+		// tx, err = templates.CreateAccount([]*flow.AccountKey{accountKey}, nil, serviceAddress)
 	}
 
 	// tx, err := templates.CreateAccount([]*flow.AccountKey{accountKey}, nil, serviceAddress)
@@ -249,6 +254,16 @@ func SendTransaction() {
 	flow.NewTransaction()
 }
 
+type noopMemoryGauge struct{}
+
+func (g noopMemoryGauge) Use(_ common.MemoryUsage) {}
+
+func (g noopMemoryGauge) UseMemory(_ uint64) {}
+
+func (g noopMemoryGauge) MeterMemory(_ common.MemoryUsage) error {
+	return nil
+}
+
 func ArgAsCadence(a interface{}) (cadence.Value, error) {
 	c, ok := a.(cadence.Value)
 	if ok {
@@ -259,8 +274,9 @@ func ArgAsCadence(a interface{}) (cadence.Value, error) {
 	if err != nil {
 		return cadence.Void{}, err
 	}
+	gauge := noopMemoryGauge{}
 	// Use cadence's own encoding library
-	c, err = c_json.Decode(j)
+	c, err = c_json.Decode(gauge, j)
 
 	if err != nil {
 		return cadence.Void{}, err

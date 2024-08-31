@@ -24,8 +24,13 @@ RUN go mod download
 # Copy the code into the container
 COPY . .
 
-# Build the application
-RUN go build -o main .
+# Run go mod tidy to ensure go.mod and go.sum are up to date
+RUN go mod tidy
+
+
+# Disable CGO and build the application with the no_cgo tag
+RUN CGO_ENABLED=0 go build -tags=no_cgo -o main .
+
 
 # Move to /dist directory as the place for resulting binary folder
 WORKDIR /dist
