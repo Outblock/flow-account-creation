@@ -112,7 +112,40 @@ func CreateAccount(node string,
 	// tx, err := templates.CreateAccount([]*flow.AccountKey{accountKey}, nil, serviceAddress)
 	var transactionScript string
 	if network == "testnet" {
-		transactionScript = "import Crypto\n import FlowToken from 0x7e60df042a9c0868\n import FungibleToken from 0x9a0766d93b6608b7\n transaction(publicKeys: [Crypto.KeyListEntry], contracts: {String: String}, fundAmount: UFix64) {\n let tokenReceiver: &{FungibleToken.Receiver}\n let sentVault: @FungibleToken.Vault\n prepare(signer: AuthAccount) {\n let account = AuthAccount(payer: signer)\n for key in publicKeys {\n account.keys.add(publicKey: key.publicKey, hashAlgorithm: key.hashAlgorithm, weight: key.weight)\n }\n for contract in contracts.keys {\n account.contracts.add(name: contract, code: contracts[contract]!.decodeHex())\n }\n self.tokenReceiver = account.getCapability(/public/flowTokenReceiver)!.borrow<&{FungibleToken.Receiver}>() ?? panic(\"Unable to borrow receiver reference\")\n let vaultRef = signer.borrow<&FlowToken.Vault>(from: /storage/flowTokenVault) ?? panic(\"Could not borrow reference to the owner''s Vault!\")\n self.sentVault <- vaultRef.withdraw(amount: fundAmount)\n }\n execute {\n self.tokenReceiver.deposit(from: <-self.sentVault)\n }\n }\n "
+		transactionScript = `
+ 
+ 
+ import Crypto
+ import FungibleToken from 0x9a0766d93b6608b7
+ import FlowToken from 0x7e60df042a9c0868
+ import EVM from 0x8c5303eaa26202d6
+ 
+ transaction(publicKeys: [Crypto.KeyListEntry], contracts: {String: String}) {
+		 let auth: auth(Storage) &Account
+ 
+		 prepare(signer: auth(Storage) &Account) {
+ 
+				 let account = Account(payer: signer)
+ 
+				 for key in publicKeys {
+						 account.keys.add(publicKey: key.publicKey, hashAlgorithm: key.hashAlgorithm, weight: key.weight)
+				 }
+ 
+				 for contract in contracts.keys {
+						 account.contracts.add(name: contract, code: contracts[contract]!.decodeHex())
+				 }
+ 
+				 self.auth = account
+		 }
+ 
+		 execute {
+				 let account <- EVM.createCadenceOwnedAccount()
+				 log(account.address())
+ 
+				 self.auth.storage.save<@EVM.CadenceOwnedAccount>(<-account, to: StoragePath(identifier: "evm")!)
+		 }
+ }
+	 `
 	} else if network == "previewnet" {
 		transactionScript = `import Crypto
 		import FlowToken from 0x4445e7ad11568276
