@@ -54,7 +54,7 @@ func CreateAccount(node string,
 	network string) *flow.Transaction {
 
 	ctx := context.Background()
-	log.Printf("sigAlgoName is: %v\n", sigAlgoName)
+	log.Printf("network is: %v\n", network)
 
 	sigAlgo := crypto.StringToSignatureAlgorithm(sigAlgoName)
 	publicKey, err := crypto.DecodePublicKeyHex(sigAlgo, publicKeyHex)
