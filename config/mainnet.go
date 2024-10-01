@@ -35,31 +35,35 @@ var flowMainnetAccountCreate = []byte(`
   import FungibleToken from 0xf233dcee88fe0abe
 	import EVM from 0xe467b9dd11fa00df
 	
-	transaction(publicKeys: [Crypto.KeyListEntry], contracts: {String: String}) {
-			let auth: auth(Storage) &Account
-	
-			prepare(signer: auth(Storage) &Account) {
-	
-					let account = Account(payer: signer)
-	
-					for key in publicKeys {
-							account.keys.add(publicKey: key.publicKey, hashAlgorithm: key.hashAlgorithm, weight: key.weight)
-					}
-	
-					for contract in contracts.keys {
-							account.contracts.add(name: contract, code: contracts[contract]!.decodeHex())
-					}
-	
-					self.auth = account
-			}
-	
-			execute {
-					let account <- EVM.createCadenceOwnedAccount()
-					log(account.address())
-	
-					self.auth.storage.save<@EVM.CadenceOwnedAccount>(<-account, to: StoragePath(identifier: "evm")!)
-			}
-	}
+	 transaction(publicKeys: [Crypto.KeyListEntry], contracts: {String: String}, fundAmount: UFix64) {
+				let sentVault: @{FungibleToken.Vault}
+				let signer: auth(BorrowValue | Storage) &Account
+		
+				prepare(signer: auth(BorrowValue, Storage) &Account) {
+		
+						let vaultRef = signer.storage.borrow<auth(FungibleToken.Withdraw) &FlowToken.Vault>(from: /storage/flowTokenVault) ?? panic("Could not borrow reference to the owner''s Vault!")
+						self.sentVault <- vaultRef.withdraw(amount: fundAmount)
+		
+						self.signer = signer
+				}
+				execute {
+						let account = Account(payer: self.signer)
+						for key in publicKeys {
+								account.keys.add(publicKey: key.publicKey, hashAlgorithm: key.hashAlgorithm, weight: key.weight)
+						}
+						// account.keys.add(publicKey: PublicKey(
+						//     publicKey: publicKey.decodeHex(),
+						//     signatureAlgorithm: SignatureAlgorithm(rawValue: 1)!), 
+						//     hashAlgorithm: HashAlgorithm(rawValue: 1)!, weight: 1000.0)
+		
+						for contract in contracts.keys {
+								account.contracts.add(name: contract, code: contracts[contract]!.decodeHex())
+						}
+						let tokenReceiver = account.capabilities.borrow<&{FungibleToken.Receiver}>(/public/flowTokenReceiver) ?? panic("Unable to borrow receiver reference")
+		
+						tokenReceiver.deposit(from: <-self.sentVault)
+				}
+		 }
 		`)
 
 func CreateFlowMainnetAccount(accountKeys []*flow.AccountKey, contracts []Contract, payer flow.Address) (*flow.Transaction, error) {
