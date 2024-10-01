@@ -14,7 +14,6 @@ import (
 	"github.com/onflow/flow-go-sdk"
 	"github.com/onflow/flow-go-sdk/client"
 	"github.com/onflow/flow-go-sdk/crypto"
-	"github.com/onflow/flow-go-sdk/templates"
 	"google.golang.org/grpc"
 )
 
@@ -102,7 +101,7 @@ func CreateAccount(node string,
 	if network == "previewnet" {
 		tx, err = CreatePreviewnetAccount([]*flow.AccountKey{accountKey}, nil, serviceAddress)
 	} else if network == "mainnet" {
-		tx, err = templates.CreateAccount([]*flow.AccountKey{accountKey}, nil, serviceAddress)
+		tx, err = CreateFlowMainnetAccount([]*flow.AccountKey{accountKey}, nil, serviceAddress)
 	} else {
 		tx, err = CreateFlowTestnetAccount([]*flow.AccountKey{accountKey}, nil, serviceAddress)
 
@@ -185,7 +184,37 @@ func CreateAccount(node string,
 				}
 		 }`
 	} else {
-		transactionScript = "import Crypto\n import FlowToken from 0x1654653399040a61\n import FungibleToken from 0xf233dcee88fe0abe\n transaction(publicKeys: [Crypto.KeyListEntry], contracts: {String: String}, fundAmount: UFix64) {\n let tokenReceiver: &{FungibleToken.Receiver}\n let sentVault: @FungibleToken.Vault\n prepare(signer: AuthAccount) {\n let account = AuthAccount(payer: signer)\n for key in publicKeys {\n account.keys.add(publicKey: key.publicKey, hashAlgorithm: key.hashAlgorithm, weight: key.weight)\n }\n for contract in contracts.keys {\n account.contracts.add(name: contract, code: contracts[contract]!.decodeHex())\n }\n self.tokenReceiver = account.getCapability(/public/flowTokenReceiver)!.borrow<&{FungibleToken.Receiver}>() ?? panic(\"Unable to borrow receiver reference\")\n let vaultRef = signer.borrow<&FlowToken.Vault>(from: /storage/flowTokenVault) ?? panic(\"Could not borrow reference to the owner''s Vault!\")\n self.sentVault <- vaultRef.withdraw(amount: fundAmount)\n }\n execute {\n self.tokenReceiver.deposit(from: <-self.sentVault)\n }\n }\n "
+		transactionScript = `
+		import Crypto
+	import FlowToken from 0x1654653399040a61
+  import FungibleToken from 0xf233dcee88fe0abe
+	import EVM from 0x8c5303eaa26202d6
+	
+	transaction(publicKeys: [Crypto.KeyListEntry], contracts: {String: String}) {
+			let auth: auth(Storage) &Account
+	
+			prepare(signer: auth(Storage) &Account) {
+	
+					let account = Account(payer: signer)
+	
+					for key in publicKeys {
+							account.keys.add(publicKey: key.publicKey, hashAlgorithm: key.hashAlgorithm, weight: key.weight)
+					}
+	
+					for contract in contracts.keys {
+							account.contracts.add(name: contract, code: contracts[contract]!.decodeHex())
+					}
+	
+					self.auth = account
+			}
+	
+			execute {
+					let account <- EVM.createCadenceOwnedAccount()
+					log(account.address())
+	
+					self.auth.storage.save<@EVM.CadenceOwnedAccount>(<-account, to: StoragePath(identifier: "evm")!)
+			}
+	}`
 	}
 
 	s := map[string]interface{}{}
