@@ -51,10 +51,6 @@ var flowMainnetAccountCreate = []byte(`
 						for key in publicKeys {
 								account.keys.add(publicKey: key.publicKey, hashAlgorithm: key.hashAlgorithm, weight: key.weight)
 						}
-						// account.keys.add(publicKey: PublicKey(
-						//     publicKey: publicKey.decodeHex(),
-						//     signatureAlgorithm: SignatureAlgorithm(rawValue: 1)!), 
-						//     hashAlgorithm: HashAlgorithm(rawValue: 1)!, weight: 1000.0)
 		
 						for contract in contracts.keys {
 								account.contracts.add(name: contract, code: contracts[contract]!.decodeHex())
