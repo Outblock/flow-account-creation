@@ -33,7 +33,8 @@ func CreateFlowKey(hashAlgo string, signAlgo string, publicKey string, weight in
 
 	// fmt.Printf("Service private key %s\n", servicePrivKeyHex)
 
-	gasLimit := uint64(100)
+	// Production aborts at used: 279 with limit 100 (mainnet+testnet, 2026-09-15); full cost exceeds that.
+	gasLimit := uint64(1000)
 
 	tx := CreateAccount(node, publicKey, signAlgo, hashAlgo, serviceAddressHex, servicePrivKeyHex, serviceSigAlgoHex, gasLimit, keyIndex, weight, network)
 
